@@ -20,11 +20,14 @@ api = Api(app)
 
 class ClearSession(Resource):
 
-    def delete(self):
-    
+    def get(self):
         session['page_views'] = None
         session['user_id'] = None
+        return {}, 204
 
+    def delete(self):
+        session['page_views'] = None
+        session['user_id'] = None
         return {}, 204
 
 class IndexArticle(Resource):
@@ -59,7 +62,6 @@ class Login(Resource):
         user = User.query.filter(User.username == username).first()
 
         if user:
-        
             session['user_id'] = user.id
             return UserSchema().dump(user), 200
 
@@ -68,9 +70,7 @@ class Login(Resource):
 class Logout(Resource):
 
     def delete(self):
-
         session['user_id'] = None
-        
         return {}, 204
 
 class CheckSession(Resource):
@@ -87,12 +87,23 @@ class CheckSession(Resource):
 class MemberOnlyIndex(Resource):
     
     def get(self):
-        pass
+        if not session.get('user_id'):
+            return {'message': 'Unauthorized'}, 401
+
+        articles = [
+            ArticleSchema().dump(article)
+            for article in Article.query.filter(Article.is_member_only == True).all()
+        ]
+        return make_response(articles, 200)
 
 class MemberOnlyArticle(Resource):
     
     def get(self, id):
-        pass
+        if not session.get('user_id'):
+            return {'message': 'Unauthorized'}, 401
+
+        article = Article.query.filter(Article.id == id).first()
+        return ArticleSchema().dump(article), 200
 
 api.add_resource(ClearSession, '/clear', endpoint='clear')
 api.add_resource(IndexArticle, '/articles', endpoint='article_list')
